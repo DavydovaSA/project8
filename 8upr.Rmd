@@ -1,0 +1,126 @@
+---
+title: "Упражнение 8"
+author: ""
+date: '06 апреля 2017 г '
+output: html_document
+---
+
+
+```{r include = F}
+library('tree')
+library('ISLR')
+library('MASS')
+library('randomForest')
+library('gbm')
+
+attach(Auto)
+head(Auto)
+
+# делаем категориальную переменную "высокие продажи":
+#  Yes если продажи больше или равны 23 (тыс. шт.), No -- в противном случае
+high.mpg <- ifelse(mpg < 23, "No", "Yes")
+# присоединяем к таблице данных
+Auto <- data.frame(Auto, high.mpg)
+Auto <- Auto[,-1]
+Auto <- Auto[,-8]
+
+
+```
+
+## Работа с настроечным параметром
+
+
+```{r}
+
+tree.auto <- tree(high.mpg ~ ., Auto)
+summary(tree.auto)
+
+# график результата
+plot(tree.auto)            # ветви
+text(tree.auto, pretty=0)  # подписи
+tree.auto                  # посмотреть всё дерево в консоли
+
+# ядро генератора случайных чисел
+set.seed(2)
+# обучающая выборка
+train <- sample(1:nrow(Auto), 196)
+# тестовая выборка
+auto.test <- Auto[-train,]
+high.test <- high.mpg[-train]
+
+
+# строим дерево на обучающей выборке
+tree.auto <- tree(high.mpg ~ ., Auto, subset = train)
+# делаем прогноз
+tree.pred <- predict(tree.auto, auto.test, type = "class")
+# матрица неточностей
+table(tree.pred, high.test)
+(98+76)/(98+6+16+76)  # обобщённая характеристика точности: доля верных прогнозов
+
+# обрезаем дерево, =============================================================
+#  критерий -- частота ошибок классификации
+set.seed(3)
+cv.auto <- cv.tree(tree.auto, FUN = prune.misclass)
+names(cv.auto)    # имена элементов полученного объекта
+cv.auto           # сам объект
+
+# графики изменения параметров метода по ходу обрезки дерева ###################
+
+# 1. ошибка с кросс-валидацией в зависимости от числа узлов
+par(mfrow = c(1, 2))
+plot(cv.auto$size, cv.auto$dev, type = "b",
+     ylab = 'Частота ошибок с кросс-вал. (dev)',
+     xlab = 'Число узлов (size)')
+# размер дерева с минимальной ошибкой
+opt.size <- cv.auto$size[cv.auto$dev == min(cv.auto$dev)]
+abline(v = opt.size, col = 'red', 'lwd' = 2)     # соотв. вертикальная прямая
+mtext(opt.size, at = opt.size, side = 1, col = 'red', line = 1)
+
+# 2. ошибка с кросс-валидацией в зависимости от штрафа на сложность
+plot(cv.auto$k, cv.auto$dev, type = "b",
+     ylab = 'Частота ошибок с кросс-вал. (dev)',
+     xlab = 'Штраф за сложность (k)')
+
+# точность дерева с 5 узлами ###################################################
+prune.auto <- prune.misclass(tree.auto, best = 5)
+plot(prune.auto)
+text(prune.auto, pretty = 0)
+tree.pred <- predict(prune.auto, auto.test, type = "class")
+table(tree.pred, high.test)
+(98+76)/(98+6+16+76)
+tree.pred
+
+```
+
+## MSE на тестовой и график "прогноз-реализация"
+
+```{r echo = T, warning = F, error = F}
+
+prune.auto <- prune.tree(tree.auto, best = 5)
+plot(prune.auto)
+text(prune.auto, pretty = 0)
+
+yhat <- predict(tree.auto, newdata = Auto[-train,])
+auto.test <- Auto[-train, "high.mpg"]
+
+# график "прогноз -- реализация"
+plot(yhat, auto.test)
+abline(0, 1)   # линия идеального прогноза
+mean((yhat - boston.test)^2)  # MSE на тестовой (тыс.долл.)
+
+
+
+
+
+
+yhat.bag = predict(prune.auto, newdata = Auto[-train, ])
+
+#autov.test <- Auto[-train, "hight.mpg"]
+auto.test <- Auto[-train,]
+# график "прогноз -- реализация"
+plot(yhat.bag, auto.test)
+abline(0, 1)   # линия идеального прогноза
+mean((yhat.bag - auto.test)^2)  # MSE на тестовой (тыс.долл.)
+
+```
+
