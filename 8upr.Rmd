@@ -6,7 +6,9 @@ output: html_document
 ---
 
 
-```{r include = F}
+В задаче реализуется метод Дерево с обрезкой ветвей. Настроечные параметры метода: число узлов.
+
+```{r include = F, echo = T}
 library('tree')
 library('ISLR')
 library('MASS')
@@ -14,7 +16,6 @@ library('randomForest')
 library('gbm')
 
 attach(Auto)
-head(Auto)
 
 # делаем категориальную переменную "высокие продажи":
 #  Yes если продажи больше или равны 23 (тыс. шт.), No -- в противном случае
@@ -30,7 +31,7 @@ Auto <- Auto[,-8]
 ## Работа с настроечным параметром
 
 
-```{r}
+```{r, echo = T}
 
 tree.auto <- tree(high.mpg ~ ., Auto)
 summary(tree.auto)
@@ -42,12 +43,11 @@ tree.auto                  # посмотреть всё дерево в кон�
 
 # ядро генератора случайных чисел
 set.seed(2)
-# обучающая выборка
+# обучающая выборка: 50% наблюдений
 train <- sample(1:nrow(Auto), 196)
 # тестовая выборка
 auto.test <- Auto[-train,]
 high.test <- high.mpg[-train]
-
 
 # строим дерево на обучающей выборке
 tree.auto <- tree(high.mpg ~ ., Auto, subset = train)
@@ -88,39 +88,20 @@ text(prune.auto, pretty = 0)
 tree.pred <- predict(prune.auto, auto.test, type = "class")
 table(tree.pred, high.test)
 (98+76)/(98+6+16+76)
-tree.pred
 
 ```
 
-## MSE на тестовой и график "прогноз-реализация"
+## Прогноз на тестовой выборке
 
 ```{r echo = T, warning = F, error = F}
 
-prune.auto <- prune.tree(tree.auto, best = 5)
-plot(prune.auto)
-text(prune.auto, pretty = 0)
-
-yhat <- predict(tree.auto, newdata = Auto[-train,])
+yhat.bag <-  predict(prune.auto, newdata = Auto[-train, ], type = "class")
 auto.test <- Auto[-train, "high.mpg"]
-
-# график "прогноз -- реализация"
-plot(yhat, auto.test)
-abline(0, 1)   # линия идеального прогноза
-mean((yhat - boston.test)^2)  # MSE на тестовой (тыс.долл.)
-
-
-
-
-
-
-yhat.bag = predict(prune.auto, newdata = Auto[-train, ])
-
-#autov.test <- Auto[-train, "hight.mpg"]
-auto.test <- Auto[-train,]
-# график "прогноз -- реализация"
 plot(yhat.bag, auto.test)
-abline(0, 1)   # линия идеального прогноза
-mean((yhat.bag - auto.test)^2)  # MSE на тестовой (тыс.долл.)
+table(yhat.bag, auto.test)
+(92+78)/(92+78+12+14)
 
 ```
+
+
 
